@@ -6,11 +6,7 @@ export const metadata: Metadata = {
   description: 'Recolha de embalagens com depósito ao domicílio.',
 }
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-PT">
       <head>
