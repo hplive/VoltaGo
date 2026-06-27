@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { getTipoLabel, getTipoEmoji, formatCurrency } from '@/lib/utils'
-import { MapPin, Recycle, TrendingUp } from 'lucide-react'
+import { Recycle, Leaf, Package } from 'lucide-react'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -16,26 +16,30 @@ export default async function DashboardPage() {
   const nomeLocal = user.user_metadata?.nome_local || 'A minha conta'
   const nomeUser = user.user_metadata?.nome || user.email?.split('@')[0] || 'Utilizador'
 
-  // Carregar conta
   const { data: contaLink } = await supabase
     .from('conta_utilizadores')
     .select('conta_id, contas(*)')
-    .eq('user_id', user.id)
-    .limit(1)
-    .maybeSingle()
+    .eq('user_id', user.id).limit(1).maybeSingle()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const conta = (contaLink as any)?.contas || null
+  const contaId = conta?.id
 
-  const conta = (contaLink?.contas as any) || null
+  const { data: carteira } = contaId ? await supabase
+    .from('carteiras').select('saldo').eq('conta_id', contaId).single() : { data: null }
 
-  // Carregar carteira
-  const { data: carteira } = conta ? await supabase
-    .from('carteiras')
-    .select('saldo')
-    .eq('conta_id', conta.id)
-    .single() : { data: null }
+  // Stats reais a partir dos pedidos concluídos
+  const { data: pedidos } = contaId ? await supabase
+    .from('pedidos_recolha').select('quantidade, co2_kg, estado').eq('conta_id', contaId) : { data: [] }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const concluidos = (pedidos || []).filter((p: any) => p.estado === 'concluida')
+  const numRecolhas = concluidos.length
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const totalEmb = concluidos.reduce((s: number, p: any) => s + (p.quantidade || 0), 0)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const totalCO2 = concluidos.reduce((s: number, p: any) => s + Number(p.co2_kg || 0), 0)
 
-  // Carregar zona e bairros
   const { data: zona } = await supabase.from('zonas').select('*').eq('estado', 'ativa').limit(1).single()
-  const { data: bairros } = zona ? await supabase.from('bairros').select('*').eq('zona_id', zona.id).order('nome') : { data: [] }
+  const { data: bairros } = zona ? await supabase.from('bairros').select('*').eq('zona_id', zona.id).order('casas_aderentes', { ascending: false }) : { data: [] }
 
   const saldo = carteira?.saldo || 0
   const tipoLabel = getTipoLabel(tipo)
@@ -44,7 +48,6 @@ export default async function DashboardPage() {
 
   return (
     <div>
-      {/* Header */}
       <div className="bg-[#0E3B2E] text-white rounded-b-3xl px-5 pt-12 pb-6">
         <p className="text-[#9DBFB1] text-sm">Bom dia, {nomeUser} {tipoEmoji}</p>
         <h1 className="font-display font-semibold text-2xl mt-1">{nomeLocal}</h1>
@@ -56,13 +59,12 @@ export default async function DashboardPage() {
             <p className="font-display font-bold text-3xl mt-1">{formatCurrency(saldo)}</p>
           </div>
           <Badge variant={estadoBadge} className="text-sm px-3 py-1">
-            {conta?.estado === 'ativa' ? 'Ativa' : conta?.estado === 'espera' ? 'Lista de espera' : 'Em configuração'}
+            {conta?.estado === 'ativa' ? 'Ativa' : conta?.estado === 'espera' ? 'Lista de espera' : 'Config.'}
           </Badge>
         </div>
       </div>
 
       <div className="px-4 mt-4 space-y-4">
-        {/* CTA principal */}
         {tipo === 'casa' && conta?.estado === 'espera' ? (
           <Card className="border-[#ECD9AE] bg-[#FBF1DD]">
             <div className="flex gap-3 items-start">
@@ -81,28 +83,32 @@ export default async function DashboardPage() {
           </Link>
         )}
 
-        {/* Stats */}
         <div className="grid grid-cols-3 gap-3">
-          {[
-            { label: 'Recolhas', value: '0', icon: Recycle },
-            { label: 'Embalagens', value: '0', icon: TrendingUp },
-            { label: 'CO₂ poupado', value: '0 kg', icon: MapPin },
-          ].map(({ label, value, icon: Icon }) => (
-            <Card key={label} className="text-center p-3">
-              <p className="font-display font-bold text-xl">{value}</p>
-              <p className="text-xs text-[#6B7A72] mt-1">{label}</p>
-            </Card>
-          ))}
+          <Card className="text-center p-3">
+            <Recycle className="w-5 h-5 text-[#1FA971] mx-auto mb-1" />
+            <p className="font-display font-bold text-xl">{numRecolhas}</p>
+            <p className="text-xs text-[#6B7A72] mt-1">Recolhas</p>
+          </Card>
+          <Card className="text-center p-3">
+            <Package className="w-5 h-5 text-[#E0A23B] mx-auto mb-1" />
+            <p className="font-display font-bold text-xl">{totalEmb.toLocaleString('pt-PT')}</p>
+            <p className="text-xs text-[#6B7A72] mt-1">Embalagens</p>
+          </Card>
+          <Card className="text-center p-3">
+            <Leaf className="w-5 h-5 text-[#1FA971] mx-auto mb-1" />
+            <p className="font-display font-bold text-xl">{totalCO2.toFixed(1)}</p>
+            <p className="text-xs text-[#6B7A72] mt-1">kg CO₂</p>
+          </Card>
         </div>
 
-        {/* Zona Porto */}
         <Card>
           <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-[#6B7A72]">Zona Porto</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-[#6B7A72]">Zona Porto · Bairros</p>
             <Badge variant="green">Ativa</Badge>
           </div>
           <div className="space-y-2">
-            {(bairros || []).slice(0, 5).map((b: any) => (
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+            {(bairros || []).slice(0, 6).map((b: any) => (
               <div key={b.id} className="flex items-center justify-between py-2 border-b border-[#E4E7E2] last:border-0">
                 <div className="flex items-center gap-2">
                   <div className={`w-2 h-2 rounded-full ${b.tem_rota ? 'bg-[#1FA971]' : 'bg-[#E0A23B]'}`} />
@@ -114,13 +120,9 @@ export default async function DashboardPage() {
                 </div>
               </div>
             ))}
-            {(!bairros || bairros.length === 0) && (
-              <p className="text-sm text-[#6B7A72] py-2">A carregar bairros da Zona Porto…</p>
-            )}
           </div>
         </Card>
 
-        {/* Info card */}
         <Card className="bg-[#EAF7F1] border-[#BFE6D4]">
           <div className="flex gap-3">
             <span className="text-xl">♻️</span>
@@ -128,7 +130,7 @@ export default async function DashboardPage() {
               <p className="text-sm font-semibold text-[#0c5e44]">Como funciona</p>
               <p className="text-xs text-[#2a7a5a] mt-1">
                 {tipo === 'condominio'
-                  ? 'O parceiro logístico recolhe no vosso contentor. O depósito vai para o fundo comum do prédio.'
+                  ? 'O parceiro logístico recolhe no vosso contentor. O depósito vai para o fundo comum.'
                   : tipo === 'restaurante'
                   ? 'Recolha recorrente adaptada ao vosso volume. Faturação mensal pelo serviço.'
                   : 'Quando uma rota abrir no seu bairro, encaixamos a sua casa gratuitamente.'}
