@@ -1,9 +1,7 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
 
-export default async function Home() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (user) redirect('/dashboard')
+// Redireciona sempre para /login
+// A protecção de rotas está nos layouts (server components)
+export default function Home() {
   redirect('/login')
 }
