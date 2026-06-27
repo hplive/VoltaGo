@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+:root {
+  --green: #0E3B2E;
+  --green2: #15543F;
+  --signal: #1FA971;
+  --brass: #E0A23B;
+  --paper: #F5F5F0;
+  --ink: #14201B;
+  --muted: #6B7A72;
+  --line: #E4E7E2;
+  --danger: #C2563B;
+  --resto: #3B6BE0;
+  --cond: #8B3BE0;
+  --casa: #E06B1F;
+}
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background-color: var(--paper);
+  color: var(--ink);
+}
+
+.font-display {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+}
