@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VoltaGo v2 — Protótipo com Modelo de Domínio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --green:#0E3B2E;--green2:#15543F;--signal:#1FA971;--brass:#E0A23B;--brass2:#B9822A;
+  --paper:#F5F5F0;--card:#FFFFFF;--ink:#14201B;--muted:#6B7A72;--line:#E4E7E2;
+  --danger:#C2563B;--resto:#3B6BE0;--resto-bg:#EEF2FC;--cond:#8B3BE0;--cond-bg:#F2EEFB;
+  --casa:#E06B1F;--casa-bg:#FBF1EB;--shadow:0 12px 40px rgba(14,59,46,.13);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:radial-gradient(900px 500px at 0% 0%,#103a2d,transparent 60%),radial-gradient(700px 400px at 100% 100%,#0a2219,transparent 60%),#0b271f;color:var(--ink);min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px 12px 60px}
+
+/* controls */
+.brand-row{width:100%;max-width:960px;display:flex;align-items:center;gap:10px;margin-bottom:14px;color:#EAF2EC}
+.logo{font-family:'Space Grotesk';font-weight:700;font-size:22px;display:flex;align-items:center;gap:8px}
+.logo-mark{width:28px;height:28px;background:var(--signal);border-radius:8px;display:grid;place-items:center}
+.logo-mark svg{width:16px;height:16px}
+.go{color:var(--brass)}
+.badge{font-size:11px;color:#7FA091;border:1px solid #2c5446;padding:2px 8px;border-radius:99px;margin-left:auto}
+.tagline{color:#8FADA3;font-size:12.5px;width:100%;max-width:960px;margin-bottom:16px}
+
+.controls{width:100%;max-width:960px;display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.ctl{background:rgba(255,255,255,.05);border:1px solid #2c5446;border-radius:12px;padding:9px 12px}
+.ctl-label{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:#7FA091;font-weight:600;margin-bottom:7px}
+.seg{display:flex;gap:4px;flex-wrap:wrap}
+.seg button{font-family:'Space Grotesk';font-weight:600;font-size:12.5px;border:none;cursor:pointer;padding:7px 11px;border-radius:8px;background:transparent;color:#CFE0D8;transition:.15s}
+.seg button:hover{background:rgba(255,255,255,.07)}
+.seg button.on{background:var(--signal);color:#06231A}
+.seg.tipo button[data-t="restaurante"].on{background:var(--resto);color:#fff}
+.seg.tipo button[data-t="condominio"].on{background:var(--cond);color:#fff}
+.seg.tipo button[data-t="casa"].on{background:var(--casa);color:#fff}
+.seg.rota button.on{background:var(--brass);color:#3a2602}
+.ctl.dim{opacity:.3;pointer-events:none}
+
+/* phone */
+.stage{width:100%;display:flex;justify-content:center}
+.phone{width:390px;max-width:95vw;height:800px;background:var(--paper);border-radius:44px;box-shadow:var(--shadow),0 0 0 10px #0a221b,0 0 0 11px #1d4636;overflow:hidden;position:relative;display:flex;flex-direction:column}
+.notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:140px;height:25px;background:#0a221b;border-radius:0 0 14px 14px;z-index:40}
+.statusbar{height:42px;flex:none;display:flex;align-items:flex-end;justify-content:space-between;padding:0 22px 5px;font-size:12px;font-weight:600;color:var(--ink)}
+.scroll-area{flex:1;overflow-y:auto;overflow-x:hidden}
+.scroll-area::-webkit-scrollbar{width:0}
+
+/* app chrome */
+.appbar{padding:6px 18px 14px;background:var(--paper);position:sticky;top:0;z-index:20}
+.appbar.dark{background:var(--green);border-radius:0 0 20px 20px;padding-bottom:18px;color:#EAF2EC}
+.ab-sub{font-size:12.5px;color:var(--muted)}
+.appbar.dark .ab-sub{color:#9DBFB1}
+.ab-title{font-family:'Space Grotesk';font-weight:600;font-size:21px;letter-spacing:-.3px;margin-top:2px}
+.ab-row{display:flex;align-items:center;justify-content:space-between}
+.ab-icon{width:38px;height:38px;border-radius:11px;background:rgba(255,255,255,.12);display:grid;place-items:center;cursor:pointer;flex:none}
+.back-btn{display:flex;align-items:center;gap:8px;border:none;background:transparent;cursor:pointer;padding:8px 0;color:var(--ink);font-family:'Space Grotesk';font-weight:600;font-size:15px}
+
+.screen{display:none;padding:0 16px 20px;animation:fadein .2s ease}
+.screen.on{display:block}
+@keyframes fadein{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+
+/* atoms */
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-top:12px}
+.card.lift{box-shadow:0 4px 16px rgba(14,59,46,.07)}
+.card.dark{background:var(--green);border:none;color:#EAF2EC}
+.eyebrow{font-size:10px;text-transform:uppercase;letter-spacing:.13em;color:var(--muted);font-weight:600}
+.card.dark .eyebrow{color:#9DBFB1}
+.t2{font-family:'Space Grotesk';font-weight:600;font-size:16px;letter-spacing:-.2px;margin-top:2px}
+.sub{font-size:12.5px;color:var(--muted);line-height:1.5;margin-top:4px}
+.bignum{font-family:'Space Grotesk';font-weight:700;font-size:32px;letter-spacing:-1px}
+.unit{font-size:14px;color:var(--muted);font-weight:500}
+
+.btn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;border:none;cursor:pointer;font-family:'Space Grotesk';font-weight:600;font-size:14.5px;padding:14px;border-radius:13px;background:var(--signal);color:#06231A;transition:.15s;margin-top:12px}
+.btn:hover{filter:brightness(1.06)}
+.btn:active{transform:scale(.99)}
+.btn.brass{background:var(--brass);color:#3a2602}
+.btn.ghost{background:transparent;border:1.5px solid var(--line);color:var(--ink)}
+.btn.dark{background:var(--green);color:#EAF2EC}
+.btn.resto{background:var(--resto);color:#fff}
+.btn.cond{background:var(--cond);color:#fff}
+.btn.danger{background:var(--danger);color:#fff}
+
+.between{display:flex;justify-content:space-between;align-items:center}
+.row{display:flex;align-items:center;gap:10px}
+.row+.row{margin-top:10px}
+.divider{height:1px;background:var(--line);margin:12px 0}
+
+.pill{font-size:10.5px;font-weight:600;padding:3px 8px;border-radius:99px;white-space:nowrap}
+.pill.green{background:#EAF7F1;color:#0c5e44}
+.pill.brass{background:#FBF1DD;color:#8a5e14}
+.pill.grey{background:#EEF1EE;color:#5a6862}
+.pill.blue{background:var(--resto-bg);color:#2345a8}
+.pill.purple{background:var(--cond-bg);color:#5c1fa8}
+.pill.orange{background:var(--casa-bg);color:#a83d1f}
+.pill.red{background:#FDECEA;color:#a83d1f}
+
+.av{width:40px;height:40px;border-radius:50%;flex:none;display:grid;place-items:center;font-family:'Space Grotesk';font-weight:700;font-size:14px;color:#fff}
+.ic{width:36px;height:36px;border-radius:10px;background:#EFF3F0;display:grid;place-items:center;flex:none}
+
+.list-item{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}
+.list-item:last-child{border-bottom:none}
+.li-main{flex:1;min-width:0}
+.li-title{font-weight:600;font-size:13.5px}
+.li-sub{font-size:11.5px;color:var(--muted);margin-top:1px}
+.li-val{font-family:'Space Grotesk';font-weight:600;font-size:13px}
+
+.note{border-radius:12px;padding:11px 12px;font-size:12px;line-height:1.5;margin-top:12px;display:flex;gap:8px}
+.note.warn{background:#FBF1DD;border:1px solid #ECD9AE;color:#6e5212}
+.note.ok{background:#EAF7F1;border:1px solid #BFE6D4;color:#0c5e44}
+.note.info{background:#EEF2FC;border:1px solid #C5D5F5;color:#1a3a8f}
+.note svg{flex:none;margin-top:1px}
+
+/* stats row */
+.stats3{display:flex;gap:8px;margin-top:12px}
+.stats3 .s{flex:1;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 8px}
+.stats3 .sn{font-family:'Space Grotesk';font-weight:700;font-size:18px}
+.stats3 .sl{font-size:10.5px;color:var(--muted);margin-top:2px;line-height:1.3}
+
+/* route visual */
+.route-card{position:relative;background:linear-gradient(150deg,#103a2d,#0b2519);border-radius:16px;padding:14px;color:#EAF2EC;margin-top:12px;overflow:hidden}
+.route-glow{position:absolute;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,rgba(31,169,113,.3),transparent 70%);top:-50px;right:-30px;pointer-events:none}
+.route-svg{width:100%;height:160px;margin-top:8px}
+
+/* waiting list */
+.wait-ring{position:relative;width:140px;height:140px;margin:18px auto 0}
+.wait-ring svg{width:100%;height:100%}
+.wait-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.wait-num{font-family:'Space Grotesk';font-weight:700;font-size:28px;color:var(--casa)}
+.wait-label{font-size:10px;color:var(--muted);line-height:1.2}
+
+/* type badge strip */
+.type-strip{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
+.type-badge{padding:6px 10px;border-radius:9px;font-size:11.5px;font-weight:600;cursor:pointer}
+.type-badge.resto{background:var(--resto-bg);color:var(--resto)}
+.type-badge.cond{background:var(--cond-bg);color:var(--cond)}
+.type-badge.casa{background:var(--casa-bg);color:var(--casa)}
+
+/* bar chart */
+.bars{display:flex;gap:5px;align-items:flex-end;height:80px;margin-top:8px}
+.bar{flex:1;border-radius:5px 5px 0 0;transition:height .4s}
+.bar-label{flex:1;text-align:center;font-size:9px;color:var(--muted);margin-top:4px}
+.bar-row{display:flex;gap:5px;margin-top:4px}
+
+/* toast */
+.toast{position:absolute;bottom:88px;left:50%;transform:translateX(-50%) translateY(16px);background:var(--green);color:#EAF2EC;padding:12px 16px;border-radius:12px;font-size:13px;font-weight:500;opacity:0;pointer-events:none;transition:.3s;z-index:60;display:flex;gap:8px;align-items:center;max-width:88%;box-shadow:var(--shadow)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* nav */
+.nav{flex:none;display:flex;background:#fff;border-top:1px solid var(--line);padding:7px 4px calc(7px + env(safe-area-inset-bottom))}
+.nav button{flex:1;border:none;background:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--muted);font-size:10px;font-weight:500;padding:3px 2px}
+.nav button svg{width:21px;height:21px;stroke:currentColor}
+.nav button.on{color:var(--green)}
+
+.legend-row{display:flex;gap:12px;flex-wrap:wrap;margin-top:6px;font-size:11px;color:#A9C6BA}
+.legend-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:4px;vertical-align:middle}
+
+.footer-note{color:#7FA091;font-size:11.5px;text-align:center;margin-top:20px;max-width:960px;line-height:1.6}
+</style>
+</head>
+<body>
+
+<div class="brand-row">
+  <div class="logo">
+    <div class="logo-mark"><svg viewBox="0 0 24 24" fill="none"><path d="M12 4a8 8 0 1 0 7.5 5.3" stroke="#06231A" stroke-width="2.4" stroke-linecap="round"/><path d="M19.5 4.2v4.2h-4.2" stroke="#06231A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    Volta<span class="go">Go</span>
+  </div>
+  <span class="badge">v2 · modelo de domínio aplicado</span>
+</div>
+<p class="tagline">Três segmentos reais · Rotas geradas por B2B · Casas encaixadas · Parceiro logístico · Zona Porto · Dados fictícios</p>
+
+<div class="controls">
+  <div class="ctl">
+    <div class="ctl-label">Perfil</div>
+    <div class="seg" id="personaSeg">
+      <button data-p="cliente" class="on">Cliente</button>
+      <button data-p="motorista">Motorista</button>
+      <button data-p="admin">Admin</button>
+    </div>
+  </div>
+  <div class="ctl" id="tipoCtl">
+    <div class="ctl-label">Tipo de conta (cliente)</div>
+    <div class="seg tipo" id="tipoSeg">
+      <button data-t="condominio" class="on">Condomínio</button>
+      <button data-t="restaurante">Restaurante</button>
+      <button data-t="casa">Casa</button>
+    </div>
+  </div>
+  <div class="ctl" id="rotaCtl">
+    <div class="ctl-label">Casa (estado da rota)</div>
+    <div class="seg rota" id="rotaSeg">
+      <button data-r="sem" class="on">Sem rota</button>
+      <button data-r="com">Com rota</button>
+    </div>
+  </div>
+</div>
+
+<div class="stage">
+<div class="phone">
+  <div class="notch"></div>
+  <div class="statusbar"><span>9:41</span><span>VoltaGo · Porto</span><span>5G ▮▮</span></div>
+  <div class="scroll-area" id="scroll"></div>
+  <div class="nav" id="nav"></div>
+  <div class="toast" id="toast"></div>
+</div>
+</div>
+
+<p class="footer-note">
+  Protótipo v2 — modelo de domínio aplicado. A regra central está visível na experiência: <b>condomínios e restaurantes geram rotas</b>; <b>casas encaixam nessas rotas</b>; <b>casa sem rota = lista de espera</b>. Dados fictícios. Nome provisório.
+</p>
+
+<script>
+// ── icons ──────────────────────────────────────────────────────────────────
+const ic={
+  home:`<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M3 11l9-7 9 7M5 10v10h14V10"/></svg>`,
+  list:`<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M8 6h12M8 12h12M8 18h12M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg>`,
+  wallet:`<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><rect x="3" y="6" width="18" height="13" rx="3"/><path d="M16 12h2M3 9h13"/></svg>`,
+  leaf:`<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M5 19c8 1 14-4 14-13 0 0-9-1-12 4-2 3-2 9-2 9zM5 19c1-5 4-7 8-9"/></svg>`,
+  map:`<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/></svg>`,
+  euro:`<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M16 6a7 7 0 1 0 0 12M4 10h9M4 14h7"/></svg>`,
+  chart:`<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M3 3v18h18M7 15l3-4 3 2 4-6"/></svg>`,
+  users:`<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0M16 5.5a3 3 0 0 1 0 5.6M21 20a6 6 0 0 0-4-5.6"/></svg>`,
+  truck:`<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M3 6h11v9H3zM14 9h4l3 3v3h-7z"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg>`,
+  check:`<svg viewBox="0 0 24 24" fill="none" stroke-width="2.2"><path d="M5 12l4 4L19 7"/></svg>`,
+  info:`<svg viewBox="0 0 20 20" fill="none" stroke-width="1.7"><circle cx="10" cy="10" r="8"/><path d="M10 9v5M10 6h.01"/></svg>`,
+  pin:`<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M12 21s7-6 7-11a7 7 0 1 0-14 0c0 5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>`,
+  bell:`<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M6 9a6 6 0 1 1 12 0c0 5 2 6 2 6H4s2-1 2-6zM10 20a2 2 0 0 0 4 0"/></svg>`,
+  star:`<svg viewBox="0 0 20 20" fill="#E0A23B"><path d="M10 1l2.5 5.3 5.8.7-4.3 4 1.1 5.8L10 14l-5.1 2.8 1.1-5.8-4.3-4 5.8-.7z"/></svg>`,
+  building:`<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M4 21V5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v16M15 21V9h3a2 2 0 0 1 2 2v10M4 21h18M8 7h3M8 11h3M8 15h3"/></svg>`,
+  coffee:`<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M17 8h1a4 4 0 0 1 0 8h-1M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V8zM6 1v3M10 1v3M14 1v3"/></svg>`,
+  nav:`<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M3 11l18-8-8 18-2-8z"/></svg>`,
+  clock:`<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>`,
+  shield:`<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3z"/></svg>`,
+  arrowr:`<svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>`,
+  bottle:`<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M10 2h4M11 2v3.2c0 .7-.3 1.3-.8 1.8L9 8.4A3 3 0 0 0 8 10.6V20a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-9.4a3 3 0 0 0-1-2.2l-1.2-1.4A2.5 2.5 0 0 1 13 5.2V2"/></svg>`,
+  people:`<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
+};
+function svg(k,c='#0E3B2E'){return ic[k]?.replace(/stroke-width/g,'stroke="'+c+'" stroke-width').replace(/<(path|circle|rect)/g,'<$1 fill="none"')||''}
+
+// ── state ──────────────────────────────────────────────────────────────────
+const S={persona:'cliente',tipo:'condominio',rota:'sem',screen:'home'};
+let toastTmr;
+
+function go(s){S.screen=s;document.getElementById('scroll').scrollTop=0;render()}
+function toast(m){const t=document.getElementById('toast');t.innerHTML=svg('check','#9DE7C6')+'<span>'+m+'</span>';t.classList.add('show');clearTimeout(toastTmr);toastTmr=setTimeout(()=>t.classList.remove('show'),2400)}
+
+// ── nav configs ────────────────────────────────────────────────────────────
+const NAVS={
+  cliente_condominio:[['home','Início',ic.home],['recolhas','Recolhas',ic.list],['carteira','Fundo',ic.wallet],['impacto','Impacto',ic.leaf]],
+  cliente_restaurante:[['home','Início',ic.home],['faturas','Faturas',ic.euro],['carteira','Carteira',ic.wallet],['impacto','Impacto',ic.leaf]],
+  cliente_casa_sem:[['home','Início',ic.home],['bairro','Bairro',ic.people],['impacto','Impacto',ic.leaf]],
+  cliente_casa_com:[['home','Início',ic.home],['recolhas','Recolhas',ic.list],['carteira','Carteira',ic.wallet],['impacto','Impacto',ic.leaf]],
+  motorista:[['home','Pedidos',ic.truck],['rota','Rota',ic.map],['confirmar','Confirmar',ic.check],['ganhos','Ganhos',ic.euro]],
+  admin:[['home','Zona',ic.chart],['contas','Contas',ic.users],['rotas','Rotas',ic.map],['parceiros','Parceiros',ic.truck]],
+};
+
+function navKey(){
+  if(S.persona==='motorista') return 'motorista';
+  if(S.persona==='admin') return 'admin';
+  if(S.tipo==='casa') return 'cliente_casa_'+S.rota;
+  return 'cliente_'+S.tipo;
+}
+
+// ── route SVG ──────────────────────────────────────────────────────────────
+function routeSVG(casaIdx=4){
+  const pts=[[14,130],[60,105],[110,122],[165,88],[218,110],[270,76],[318,98]];
+  const colors=pts.map((_,i)=>{
+    if(i<3||i===5) return '#1FA971'; // B2B
+    if(i===casaIdx) return '#E06B1F'; // casa
+    if(i===6) return '#3B6BE0'; // restaurante
+    return '#1FA971';
+  });
+  const path='M'+pts.map(p=>p.join(',')).join(' L');
+  const dots=pts.map((p,i)=>{
+    const r=i===casaIdx?9:6;
+    const label=i===casaIdx?'casa':i===6?'rest.':i===2?'cond.':'';
+    return `<circle cx="${p[0]}" cy="${p[1]}" r="${r}" fill="${colors[i]}" stroke="#0b2519" stroke-width="2"/>
+      ${label?`<text x="${p[0]}" y="${p[1]-13}" fill="${colors[i]}" font-size="9.5" font-family="Space Grotesk" text-anchor="middle" font-weight="600">${label}</text>`:''}`;
+  }).join('');
+  return `<svg viewBox="0 0 332 160" style="width:100%;height:160px;overflow:visible">
+    <defs><linearGradient id="rg" x1="0" x2="1"><stop offset="0" stop-color="#1FA971"/><stop offset="1" stop-color="#3B6BE0"/></linearGradient></defs>
+    <path d="${path}" stroke="#2f6b56" stroke-width="2" stroke-dasharray="3 6" fill="none"/>
+    <path d="${path}" stroke="url(#rg)" stroke-width="3" fill="none" stroke-linecap="round" pathLength="100" stroke-dasharray="100" stroke-dashoffset="100">
+      <animate attributeName="stroke-dashoffset" from="100" to="0" dur="1.4s" fill="freeze"/>
+    </path>
+    ${dots}
+    <circle r="4" fill="#fff" opacity=".9"><animateMotion dur="2.5s" repeatCount="indefinite" path="${path}"/></circle>
+  </svg>`;
+}
+
+function waitRing(done,total){
+  const pct=done/total,r=54,circ=2*Math.PI*r;
+  const da=pct*circ,dk=circ-da;
+  return `<svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="${r}" fill="none" stroke="#EEF1EE" stroke-width="9"/>
+    <circle cx="60" cy="60" r="${r}" fill="none" stroke="#E06B1F" stroke-width="9" stroke-linecap="round"
+      stroke-dasharray="${da} ${dk}" stroke-dashoffset="${circ*.25}" transform="rotate(-90 60 60)">
+      <animate attributeName="stroke-dasharray" from="0 ${circ}" to="${da} ${dk}" dur="1s" fill="freeze"/>
+    </circle></svg>`;
+}
+
+// ── bars helper ────────────────────────────────────────────────────────────
+function bars(vals,color){
+  const max=Math.max(...vals);
+  return '<div class="bars">'+vals.map(v=>`<div class="bar" style="height:${Math.round(v/max*100)}%;background:${color}"></div>`).join('')+'</div>'+
+    '<div class="bar-row">'+['S','T','Q','Q','S','S','D'].map(d=>`<div class="bar-label">${d}</div>`).join('')+'</div>';
+}
+
+// ── screen builders ────────────────────────────────────────────────────────
+
+// ── CONDOMÍNIO ──────────────────────────────────────────────────────────────
+function condHome(){return `
+  <div class="card dark">
+    <div class="between"><div><div class="eyebrow">Fundo comum · Foz Plaza</div>
+    <div class="bignum" style="margin-top:4px">124 <span class="unit">€/mês</span></div></div>
+    <span class="pill brass">−8% quota</span></div>
+    <div class="divider" style="background:rgba(255,255,255,.15)"></div>
+    <div class="between"><span style="font-size:12.5px;color:#9DBFB1">Próxima recolha</span>
+    <span style="font-family:'Space Grotesk';font-weight:600">Terça, 08:00</span></div>
+  </div>
+  <div class="stats3">
+    <div class="s"><div class="sn">1.240</div><div class="sl">embalagens/mês</div></div>
+    <div class="s"><div class="sn">26</div><div class="sl">frações ativas</div></div>
+    <div class="s"><div class="sn">2×</div><div class="sl">por semana</div></div>
+  </div>
+  <div class="route-card">
+    <div class="route-glow"></div>
+    <div class="between"><div class="eyebrow" style="color:#9DBFB1">Rota de Terça — Bonfim</div><span class="pill green">7 paragens</span></div>
+    ${routeSVG(2)}
+    <div class="legend-row">
+      <span><span class="legend-dot" style="background:#8B3BE0"></span>condomínio</span>
+      <span><span class="legend-dot" style="background:#1FA971"></span>outros B2B</span>
+      <span><span class="legend-dot" style="background:#E06B1F"></span>casas encaixadas</span>
+    </div>
+  </div>
+  <div class="note ok">${svg('check','#0c5e44')}<div>O parceiro logístico <b>TransResiduos</b> executa esta rota com e-GAR emitida em seu nome. A VoltaGo gere o agendamento e o comprovativo.</div></div>
+  <button class="btn cond" onclick="go('comprovativos')">Ver comprovativos ↗</button>`;}
+
+function condRecolhas(){return `
+  <div class="card" style="padding:4px 14px">
+    ${li('Recolha · Terça 3 Jun','1.280 un · comprovativo PDF','362,80 €','green')}
+    ${li('Recolha · Sáb 31 Mai','1.140 un · comprovativo PDF','314,00 €','green')}
+    ${li('Recolha · Terça 27 Mai','998 un · comprovativo PDF','299,40 €','green')}
+  </div>
+  <div class="note warn">${svg('info','#8a5e14')}<div>Cada comprovativo inclui contagem por material, hora e assinatura do motorista do parceiro. Pronto para a assembleia de condóminos.</div></div>`;}
+
+function condFundo(){return `
+  <div class="card dark" style="text-align:center;padding:22px 14px">
+    <div class="eyebrow" style="color:#9DBFB1">Fundo comum acumulado · 2026</div>
+    <div class="bignum" style="margin-top:6px">1.116 €</div>
+    <div style="font-size:12.5px;color:#9DBFB1;margin-top:2px">26 frações · Foz Plaza</div>
+  </div>
+  <div class="card" style="padding:4px 14px">
+    ${li('Jun 2026','1.240 un · 2 recolhas','124,00 €','green')}
+    ${li('Mai 2026','1.180 un · 8 recolhas','118,00 €','green')}
+    ${li('Abr 2026','980 un · 8 recolhas','98,00 €','green')}
+  </div>
+  <div class="note ok">${svg('check','#0c5e44')}<div>O valor do depósito vai 100% para o fundo comum. A VoltaGo cobra uma <b>taxa de serviço separada</b> pelo agendamento e comprovativo — nunca toca no depósito.</div></div>
+  <div style="margin-top:14px"><div class="eyebrow">Destino</div>
+  <div class="between" style="margin-top:8px"><span class="sub" style="margin:0">Abate na quota mensal</span><span class="pill green">Ativo</span></div></div>`;}
+
+function condImpacto(){return impacto('Foz Plaza',4960,71,'condomínio');}
+
+// ── RESTAURANTE ─────────────────────────────────────────────────────────────
+function restoHome(){return `
+  <div class="card dark">
+    <div class="between"><div><div class="eyebrow">Café Aurora · Bonfim</div>
+    <div class="bignum" style="margin-top:4px">1.840 <span class="unit">un/sem</span></div></div>
+    <span class="pill blue">HORECA</span></div>
+    <div class="divider" style="background:rgba(255,255,255,.15)"></div>
+    <div class="between"><span style="font-size:12.5px;color:#9DBFB1">Próxima recolha</span>
+    <span style="font-family:'Space Grotesk';font-weight:600">Terça e Sexta, 09:00</span></div>
+  </div>
+  <div class="stats3">
+    <div class="s"><div class="sn">184 €</div><div class="sl">depósito/semana</div></div>
+    <div class="s"><div class="sn">38 €</div><div class="sl">taxa serviço/mês</div></div>
+    <div class="s"><div class="sn">2×</div><div class="sl">por semana</div></div>
+  </div>
+  <div class="route-card">
+    <div class="route-glow"></div>
+    <div class="between"><div class="eyebrow" style="color:#9DBFB1">Rota de Terça — Bonfim</div><span class="pill green">O Aurora está aqui</span></div>
+    ${routeSVG(6)}
+    <div class="legend-row">
+      <span><span class="legend-dot" style="background:#3B6BE0"></span>Café Aurora (você)</span>
+      <span><span class="legend-dot" style="background:#8B3BE0"></span>condomínios</span>
+      <span><span class="legend-dot" style="background:#E06B1F"></span>casas</span>
+    </div>
+  </div>
+  <div class="note info">${svg('info','#1a3a8f')}<div>A vossa paragem <b>gera esta rota</b>. As casas do bairro encaixam por isso. A VoltaGo fatura-lhe o serviço; o depósito das vossas embalagens é reembolsado à parte.</div></div>
+  <button class="btn resto" onclick="go('faturas')">Ver faturas ↗</button>`;}
+
+function restoFaturas(){return `
+  <div class="card" style="padding:4px 14px">
+    ${li('Fatura Jun 2026','Serviço de recolha · 9 visitas','38,00 €','blue')}
+    ${li('Fatura Mai 2026','Serviço de recolha · 8 visitas','34,00 €','blue')}
+    ${li('Fatura Abr 2026','Serviço de recolha · 9 visitas','38,00 €','blue')}
+  </div>
+  <div class="note info">${svg('info','#1a3a8f')}<div>A VoltaGo cobra pelo <b>serviço de recolha</b>, não pelo depósito. O depósito é seu — recebe separadamente em carteira ou crédito em fatura.</div></div>`;}
+
+function restoCarteira(){return `
+  <div class="card dark" style="text-align:center;padding:22px 14px">
+    <div class="eyebrow" style="color:#9DBFB1">Depósito acumulado</div>
+    <div class="bignum" style="margin-top:6px">736 €</div>
+    <div style="font-size:12.5px;color:#9DBFB1">Café Aurora · 2026</div>
+  </div>
+  <div class="eyebrow" style="margin-top:14px">Destino do depósito</div>
+  <div class="card" style="padding:4px 14px">
+    ${payRow('Abater na fatura de serviço','Recomendado','blue')}
+    ${payRow('Carteira VoltaGo','Usar noutros serviços','grey')}
+    ${payRow('Transferência bancária','1–2 dias úteis','grey')}
+    ${payRow('Doação a IPSS','100% para a instituição','green')}
+  </div>`;}
+
+function restoImpacto(){return impacto('Café Aurora',9200,132,'restaurante');}
+
+// ── CASA SEM ROTA ──────────────────────────────────────────────────────────
+function casaSemHome(){return `
+  <div class="card lift" style="text-align:center;padding:20px 14px">
+    <div class="eyebrow">Rua do Heroísmo, 48 · Bonfim</div>
+    <div class="wait-ring">${waitRing(14,40)}</div>
+    <div class="wait-center"><div class="wait-num">14</div><div class="wait-label">casas inscritas<br>de 40 necessárias</div></div>
+    <div class="t2" style="margin-top:14px">Ainda não há rota no seu bairro</div>
+    <p class="sub">Quando atingirmos 40 casas (ou um condomínio aderir nesta zona), a rota abre e vínhamos buscá-la a si.</p>
+  </div>
+  <div class="note warn">${svg('info','#8a5e14')}<div>Por design, a VoltaGo <b>não manda ninguém de propósito</b> a uma casa isolada — seria demasiado caro e o serviço não seria sustentável. A casa entra quando a rota já passa por aqui.</div></div>
+  <button class="btn brass" onclick="go('bairro')">Ver o que falta no meu bairro</button>
+  <button class="btn ghost" onclick="toast('Notificação ativada')">Avisar-me quando abrir</button>`;}
+
+function casaSemBairro(){return `
+  <div class="card">
+    <div class="eyebrow">Bonfim · Zona Porto</div>
+    <div class="t2" style="margin-top:4px">Faltam 26 casas ou 1 condomínio</div>
+    <p class="sub">Quando o limiar for atingido, o sistema cria automaticamente uma rota de casas para este bairro. Pode ajudar a chegar lá.</p>
+  </div>
+  <div class="card" style="padding:4px 14px">
+    ${li('Casas inscritas','Bonfim','14 / 40','orange')}
+    ${li('Condomínios na zona','Bonfim','0 / 1','red')}
+    ${li('Restaurantes na zona','Bonfim','1 — Café Maçã','green')}
+  </div>
+  <div class="note ok">${svg('check','#0c5e44')}<div>O Café Maçã já está na rede. Se abrir rota nesta zona, as casas inscritas entram automaticamente como paragens encaixadas.</div></div>
+  <button class="btn" onclick="toast('Link copiado — partilhe com vizinhos!')">Partilhar com vizinhos</button>
+  <button class="btn ghost" onclick="go('home')">Voltar</button>`;}
+
+function casaSemImpacto(){return `
+  <div class="card lift" style="text-align:center;padding:20px 14px">
+    <div class="eyebrow">Impacto potencial · Bonfim</div>
+    <div class="bignum" style="color:var(--casa);margin-top:8px">40</div>
+    <div class="sub">casas em rota = ~2.400 embalagens/mês = 240 € de depósito devolvido ao bairro</div>
+  </div>
+  <div class="note warn">${svg('info','#8a5e14')}<div>Os dados de impacto ficam disponíveis após a primeira recolha real. Esta é uma estimativa baseada na média de consumo por agregado familiar.</div></div>`;}
+
+// ── CASA COM ROTA ──────────────────────────────────────────────────────────
+function casaComHome(){return `
+  <div class="card dark">
+    <div class="between"><div><div class="eyebrow">Rua do Heroísmo, 48 · Bonfim</div>
+    <div class="bignum" style="margin-top:4px">3,80 <span class="unit">€ esta semana</span></div></div>
+    <span class="pill brass">Rota ativa</span></div>
+    <div class="divider" style="background:rgba(255,255,255,.15)"></div>
+    <div class="between"><span style="font-size:12.5px;color:#9DBFB1">Próxima recolha</span>
+    <span style="font-family:'Space Grotesk';font-weight:600">Sexta, 14:00–16:00</span></div>
+  </div>
+  <div class="route-card">
+    <div class="route-glow"></div>
+    <div class="between"><div class="eyebrow" style="color:#9DBFB1">Rota de Sexta — Bonfim</div><span class="pill orange">você aqui</span></div>
+    ${routeSVG(4)}
+    <div class="legend-row">
+      <span><span class="legend-dot" style="background:#E06B1F"></span>a sua casa</span>
+      <span><span class="legend-dot" style="background:#8B3BE0"></span>condomínio (gerou a rota)</span>
+      <span><span class="legend-dot" style="background:#3B6BE0"></span>restaurante</span>
+    </div>
+  </div>
+  <div class="note ok">${svg('check','#0c5e44')}<div>A rota existe porque o <b>Condomínio do Bonfim</b> aderiu. A sua casa encaixou gratuitamente — custo marginal quase zero para o estafeta.</div></div>
+  <button class="btn brass" onclick="toast('Recolha confirmada · +3,80 €');go('recolhido')">Simular recolha concluída</button>`;}
+
+function casaComRecolhido(){return `
+  <div class="card lift" style="text-align:center;padding:24px 14px">
+    <div style="width:60px;height:60px;border-radius:50%;background:#EAF7F1;display:grid;place-items:center;margin:0 auto 12px">${svg('check','#1FA971')}</div>
+    <div class="t2" style="font-size:19px">38 embalagens recolhidas</div>
+    <p class="sub">Motorista Carlos (TransResiduos) validou na sua porta.</p>
+    <div class="bignum" style="color:#0c5e44;margin-top:10px">+3,80 €</div>
+    <div class="sub">na sua Carteira VoltaGo</div>
+  </div>
+  <button class="btn" onclick="go('carteira')">Ver carteira</button>
+  <button class="btn ghost" onclick="go('home')">Início</button>`;}
+
+function casaComRecolhas(){return `
+  <div class="card" style="padding:4px 14px">
+    ${li('Hoje · Rota Bonfim','38 un','+ 3,80 €','green')}
+    ${li('23 Mai · Rota Bonfim','44 un','+ 4,40 €','green')}
+    ${li('16 Mai · Rota Bonfim','29 un','+ 2,90 €','green')}
+  </div>`;}
+
+function casaComCarteira(){return `
+  <div class="card dark" style="text-align:center;padding:20px 14px">
+    <div class="eyebrow" style="color:#9DBFB1">Carteira individual</div>
+    <div class="bignum" style="margin-top:6px">11,10 €</div>
+  </div>
+  <div class="eyebrow" style="margin-top:14px">Como receber</div>
+  <div class="card" style="padding:4px 14px">
+    ${payRow('MB WAY','Imediato','green')}
+    ${payRow('Transferência bancária','1–2 dias','grey')}
+    ${payRow('Doação a IPSS','Contribuição ambiental','green')}
+  </div>`;}
+
+function casaComImpacto(){return impacto('Rua do Heroísmo, 48',165,2.4,'casa');}
+
+// ── MOTORISTA ──────────────────────────────────────────────────────────────
+function motoristaPedidos(){return `
+  <div class="card dark">
+    <div class="between"><div><div class="eyebrow">TransResiduos · Carlos M.</div>
+    <div class="bignum" style="margin-top:4px">38,40 €</div></div>
+    <div style="text-align:right"><div class="eyebrow" style="color:#9DBFB1">Rota</div>
+    <div style="font-family:'Space Grotesk';font-weight:700;font-size:22px">7 / 12</div></div></div>
+  </div>
+  <div class="eyebrow" style="margin-top:14px">Próximas paragens · Bonfim</div>
+  <div class="card" style="padding:4px 14px">
+    ${stopItem('Condomínio Foz Plaza','Av. de França, 210 · 920 un','9 min','purple')}
+    ${stopItem('Café Aurora','R. do Bonfim, 44 · 340 un','14 min','blue')}
+    ${stopItem('Casa particular','R. do Heroísmo, 48 · 38 un','17 min','orange')}
+  </div>
+  <div class="note ok">${svg('check','#0c5e44')}<div>e-GAR emitida em nome da <b>TransResiduos</b> para esta rota. VoltaGo acompanha em tempo real. Confirme cada paragem na app.</div></div>
+  <button class="btn" onclick="go('rota')">Abrir rota ↗</button>`;}
+
+function motoristaRota(){return `
+  <div class="route-card">
+    <div class="route-glow"></div>
+    <div class="eyebrow" style="color:#9DBFB1">12 paragens · 8,8 km · ~2h</div>
+    ${routeSVG(4)}
+  </div>
+  <div class="card lift">
+    <div class="between"><span class="pill purple">Paragem 5</span><span class="pill grey">17 min</span></div>
+    <div class="t2" style="margin-top:6px">Rua do Heroísmo, 48</div>
+    <p class="sub">Casa particular · 38 embalagens previstas · plástico + latas</p>
+    <button class="btn dark" style="margin-top:10px" onclick="go('confirmar')">${svg('nav','#EAF2EC')}&nbsp;Navegar</button>
+  </div>`;}
+
+function motoristaConfirmar(){return `
+  <div class="card">
+    <div class="between"><span class="eyebrow">Paragem 5 / 12</span><span class="pill grey">Casa</span></div>
+    <div class="t2" style="margin-top:4px">Rua do Heroísmo, 48</div>
+    <div class="divider"></div>
+    <div class="row"><div class="ic">${svg('bottle','#0E3B2E')}</div><div class="li-main"><div class="li-title">Plástico</div></div><span class="bignum" style="font-size:20px">22</span></div>
+    <div class="row" style="margin-top:10px"><div class="ic">${svg('bottle','#0E3B2E')}</div><div class="li-main"><div class="li-title">Latas</div></div><span class="bignum" style="font-size:20px">16</span></div>
+    <div class="divider"></div>
+    <div class="between"><span class="sub" style="margin:0">Total · depósito</span><span style="font-family:'Space Grotesk';font-weight:700;font-size:17px;color:#0c5e44">38 un · 3,80 €</span></div>
+  </div>
+  <div class="note info">${svg('info','#1a3a8f')}<div>A contagem fica registada com hora e geolocalização. Divergências &gt;5% são sinalizadas ao admin para auditoria.</div></div>
+  <button class="btn" onclick="toast('Paragem 5 concluída · próxima a 14 min');go('pedidos')">Confirmar e seguir ↗</button>`;}
+
+function motoristaGanhos(){return `
+  <div class="card dark">
+    <div class="eyebrow">Esta semana</div>
+    <div class="bignum" style="margin-top:4px">182,60 €</div>
+    <div style="font-size:12.5px;color:#9DBFB1">34 recolhas · 5 rotas · pago 6.ª feira</div>
+  </div>
+  ${bars([40,55,35,70,90,60,80],'var(--signal)')}
+  <div class="stats3">
+    <div class="s"><div class="sn">5,4</div><div class="sl">paragens/hora</div></div>
+    <div class="s"><div class="sn">9,1 €</div><div class="sl">por hora</div></div>
+    <div class="s"><div class="sn">4,9</div><div class="sl">avaliação</div></div>
+  </div>
+  <div class="note info">${svg('info','#1a3a8f')}<div>A TransResiduos paga semanalmente. A VoltaGo repassa ao parceiro; o parceiro gere o pagamento aos motoristas.</div></div>`;}
+
+// ── ADMIN ──────────────────────────────────────────────────────────────────
+function adminHome(){return `
+  <div class="card dark">
+    <div class="eyebrow">Zona Porto · Operação</div>
+    <div class="between" style="margin-top:8px">
+      <div><div class="bignum">312</div><div style="font-size:12px;color:#9DBFB1">recolhas/semana</div></div>
+      <div style="text-align:right"><div class="bignum">2.840 €</div><div style="font-size:12px;color:#9DBFB1">receita serviço/mês</div></div>
+    </div>
+  </div>
+  <div class="stats3">
+    <div class="s"><div class="sn">8</div><div class="sl">condomínios ativos</div></div>
+    <div class="s"><div class="sn">14</div><div class="sl">restaurantes</div></div>
+    <div class="s"><div class="sn">62</div><div class="sl">casas em rota</div></div>
+  </div>
+  <div class="card">
+    <div class="eyebrow">Bairros com rota ativa</div>
+    ${bairroRow('Bonfim','3 cond · 5 rest · 28 casas','green')}
+    ${bairroRow('Paranhos','2 cond · 4 rest · 18 casas','green')}
+    ${bairroRow('Campanhã','1 cond · 3 rest · 16 casas','green')}
+    ${bairroRow('Cedofeita','0 cond · 2 rest · 14 casas em espera','brass')}
+  </div>
+  <div class="note warn">${svg('info','#8a5e14')}<div><b>Cedofeita:</b> 14 casas em lista de espera. Falta 1 condomínio ou atingir 40 casas para abrir rota. Oportunidade comercial ativa.</div></div>`;}
+
+function adminContas(){return `
+  <div class="type-strip">
+    <div class="type-badge cond">8 condomínios</div>
+    <div class="type-badge resto">14 restaurantes</div>
+    <div class="type-badge casa">62 casas ativas + 74 espera</div>
+  </div>
+  <div class="card" style="padding:4px 14px;margin-top:12px">
+    ${li('Condomínio Foz Plaza','Bonfim · 26 frações · ativo','ver','purple')}
+    ${li('Café Aurora','Bonfim · HORECA · ativo','ver','blue')}
+    ${li('Rua do Heroísmo, 48','Casa · em rota · Bonfim','ver','orange')}
+    ${li('Bloco C, Rua Cedofeita','Casa · em espera · Cedofeita','ver','grey')}
+  </div>
+  <div class="note ok">${svg('check','#0c5e44')}<div>Regra R1 ativa: contas do tipo <b>casa</b> só têm estado "em rota" se o bairro tiver rota gerada por B2B ou densidade atingida.</div></div>`;}
+
+function adminRotas(){return `
+  <div class="route-card">
+    <div class="route-glow"></div>
+    <div class="between"><div class="eyebrow" style="color:#9DBFB1">Zona Porto · Sexta-feira</div><span class="pill green">6 rotas ativas</span></div>
+    ${routeSVG(4)}
+    <div class="legend-row">
+      <span><span class="legend-dot" style="background:#8B3BE0"></span>condomínio</span>
+      <span><span class="legend-dot" style="background:#3B6BE0"></span>restaurante</span>
+      <span><span class="legend-dot" style="background:#E06B1F"></span>casa encaixada</span>
+    </div>
+  </div>
+  <div class="card" style="padding:4px 14px">
+    ${li('Rota Bonfim · Terça','12 paragens · TransResiduos','Em curso','green')}
+    ${li('Rota Paranhos · Terça','9 paragens · TransResiduos','Planeada','grey')}
+    ${li('Rota Campanhã · Quinta','7 paragens · TransResiduos','Planeada','grey')}
+  </div>`;}
+
+function adminParceiros(){return `
+  <div class="card lift">
+    <div class="between"><div class="t2">TransResiduos Lda.</div><span class="pill green">Parceiro ativo</span></div>
+    <p class="sub">Parceiro logístico oficial — Zona Porto. Executa todas as rotas.</p>
+    <div class="divider"></div>
+    <div class="between"><span class="sub" style="margin:0">Registo de transportador</span><span class="pill green">Válido</span></div>
+    <div class="between" style="margin-top:8px"><span class="sub" style="margin:0">e-GAR automática</span><span class="pill green">Ativa</span></div>
+    <div class="between" style="margin-top:8px"><span class="sub" style="margin:0">Rotas esta semana</span><span style="font-family:'Space Grotesk';font-weight:600">18</span></div>
+  </div>
+  <div class="note warn">${svg('info','#8a5e14')}<div>Antes de operar: confirmar com jurista que a e-GAR emitida pela TransResiduos cobre a tipologia das embalagens Volta. <b>Questão legal em aberto.</b></div></div>
+  <button class="btn ghost" onclick="toast('Zona Matosinhos — em preparação')">Adicionar parceiro para Matosinhos ↗</button>`;}
+
+// ── shared ──────────────────────────────────────────────────────────────────
+function impacto(nome,emb,co2,tipo){
+  const color=tipo==='condomínio'?'var(--cond)':tipo==='restaurante'?'var(--resto)':'var(--casa)';
+  return `<div class="stats3" style="margin-top:14px">
+    <div class="s"><div class="sn" style="color:${color}">${emb}</div><div class="sl">embalagens recicladas</div></div>
+    <div class="s"><div class="sn">${co2} kg</div><div class="sl">CO₂ evitado</div></div>
+    <div class="s"><div class="sn">${tipo==='casa'?5:tipo==='restaurante'?22:12}</div><div class="sl">recolhas totais</div></div>
+  </div>
+  <div class="card"><div class="eyebrow">Bairro · Porto</div>
+  <div class="t2" style="margin-top:4px">Top 3 na Zona Porto</div>
+  <p class="sub">Os dados de impacto são calculados a partir da contagem verificada em cada recolha pelo parceiro logístico.</p></div>
+  <div class="note ok">${svg('check','#0c5e44')}<div>Meta nacional: 90% de recolha até 2029. O Bonfim está em 64% — acima da média nacional de 38%.</div></div>`;}
+
+function li(t,d,v,k){return `<div class="list-item"><div class="ic">${svg('bottle')}</div><div class="li-main"><div class="li-title">${t}</div><div class="li-sub">${d}</div></div><div class="li-val"><span class="pill ${k}">${v}</span></div></div>`}
+function stopItem(t,d,eta,k){return `<div class="list-item"><div class="ic">${svg('pin')}</div><div class="li-main"><div class="li-title">${t}</div><div class="li-sub">${d}</div></div><span class="pill ${k}">${eta}</span></div>`}
+function payRow(t,d,k){return `<div class="list-item"><div class="ic">${svg('euro')}</div><div class="li-main"><div class="li-title" style="font-weight:600">${t}</div><div class="li-sub">${d}</div></div><span class="pill ${k}">Escolher</span></div>`}
+function bairroRow(b,d,k){return `<div class="list-item"><div class="ic">${svg('pin')}</div><div class="li-main"><div class="li-title">${b}</div><div class="li-sub">${d}</div></div><span class="pill ${k}">${k==='green'?'ativo':'espera'}</span></div>`}
+
+function comprovativos(){return `
+  <div class="card" style="padding:4px 14px">
+    ${li('Recolha Terça 3 Jun','1.280 un · PDF + assinatura motorista','362,80 €','green')}
+    ${li('Recolha Sáb 31 Mai','1.140 un · PDF + assinatura motorista','314,00 €','green')}
+  </div>`;}
+
+// ── appbar builders ─────────────────────────────────────────────────────────
+function darkBar(title,sub){
+  return `<div class="appbar dark"><div class="ab-row"><div><div class="ab-sub">${sub}</div><div class="ab-title">${title}</div></div>
+  <div class="ab-icon">${svg('bell','#EAF2EC')}</div></div></div>`;}
+function plainBar(title){
+  return `<div class="appbar"><button class="back-btn" onclick="go('home')">← ${title}</button></div>`;}
+
+// ── main render ─────────────────────────────────────────────────────────────
+function getScreen(){
+  const {persona,tipo,rota,screen:sc}=S;
+  if(persona==='motorista'){
+    const mp={home:motoristaPedidos,rota:motoristaRota,confirmar:motoristaConfirmar,ganhos:motoristaGanhos,pedidos:motoristaPedidos};
+    const bar=darkBar('Olá, Carlos','TransResiduos · Porto');
+    const body=(mp[sc]||motoristaPedidos)();
+    return {bar,body};
+  }
+  if(persona==='admin'){
+    const ap={home:adminHome,contas:adminContas,rotas:adminRotas,parceiros:adminParceiros};
+    const bar=darkBar('Zona Porto','Painel VoltaGo');
+    const body=(ap[sc]||adminHome)();
+    return {bar,body};
+  }
+  // cliente
+  if(tipo==='condominio'){
+    const mp={home:condHome,recolhas:condRecolhas,carteira:condFundo,impacto:condImpacto,comprovativos};
+    const bar=sc==='home'?darkBar('Bom dia, Dra. Ana','Foz Plaza · Gestora'):plainBar(sc);
+    return {bar,body:(mp[sc]||condHome)()};
+  }
+  if(tipo==='restaurante'){
+    const mp={home:restoHome,faturas:restoFaturas,carteira:restoCarteira,impacto:restoImpacto};
+    const bar=sc==='home'?darkBar('Bom dia, João','Café Aurora · Bonfim'):plainBar(sc);
+    return {bar,body:(mp[sc]||restoHome)()};
+  }
+  // casa
+  if(rota==='sem'){
+    const mp={home:casaSemHome,bairro:casaSemBairro,impacto:casaSemImpacto};
+    const bar=sc==='home'?darkBar('Olá, Marta','Rua do Heroísmo, 48 · Bonfim'):plainBar(sc);
+    return {bar,body:(mp[sc]||casaSemHome)()};
+  }
+  const mp={home:casaComHome,recolhas:casaComRecolhas,carteira:casaComCarteira,impacto:casaComImpacto,recolhido:casaComRecolhido};
+  const bar=sc==='home'?darkBar('Olá, Marta','Rua do Heroísmo, 48 · Bonfim'):plainBar(sc);
+  return {bar,body:(mp[sc]||casaComHome)()};
+}
+
+function render(){
+  const {bar,body}=getScreen();
+  const scroll=document.getElementById('scroll');
+  scroll.innerHTML=bar+`<div class="screen on">${body}</div>`;
+
+  const navEl=document.getElementById('nav');
+  const key=navKey();
+  const items=NAVS[key]||NAVS.motorista;
+  navEl.innerHTML=items.map(([id,lab,ic])=>
+    `<button class="${S.screen===id?'on':''}" onclick="go('${id}')">${ic}<span>${lab}</span></button>`
+  ).join('');
+
+  document.getElementById('tipoCtl').classList.toggle('dim',S.persona!=='cliente');
+  document.getElementById('rotaCtl').classList.toggle('dim',S.persona!=='cliente'||S.tipo!=='casa');
+}
+
+// ── wiring ──────────────────────────────────────────────────────────────────
+document.getElementById('personaSeg').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  [...e.currentTarget.children].forEach(x=>x.classList.remove('on'));b.classList.add('on');
+  S.persona=b.dataset.p;S.screen='home';render();
+});
+document.getElementById('tipoSeg').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  [...e.currentTarget.children].forEach(x=>x.classList.remove('on'));b.classList.add('on');
+  S.tipo=b.dataset.t;S.screen='home';render();
+});
+document.getElementById('rotaSeg').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  [...e.currentTarget.children].forEach(x=>x.classList.remove('on'));b.classList.add('on');
+  S.rota=b.dataset.r;S.screen='home';render();
+});
+
+render();
+</script>
+</body>
+</html>
