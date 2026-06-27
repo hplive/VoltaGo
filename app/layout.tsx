@@ -1,20 +1,24 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
-import { Space_Grotesk } from 'next/font/google'
 import './globals.css'
-
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
-const spaceGrotesk = Space_Grotesk({ subsets: ['latin'], variable: '--font-space' })
 
 export const metadata: Metadata = {
   title: 'VoltaGo — A reciclagem chega até si',
-  description: 'Recolha de embalagens com depósito ao domicílio. Condomínios, restaurantes e casas.',
+  description: 'Recolha de embalagens com depósito ao domicílio.',
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   return (
     <html lang="pt-PT">
-      <body className={`${inter.variable} ${spaceGrotesk.variable} antialiased`}>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+      </head>
+      <body className="antialiased">
         {children}
       </body>
     </html>
