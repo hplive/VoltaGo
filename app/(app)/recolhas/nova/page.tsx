@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -13,7 +14,6 @@ const materiais = [
   { id: 'lata', label: 'Latas', emoji: '🥫', desc: 'Alumínio e aço' },
   { id: 'vidro', label: 'Vidro', emoji: '🫙', desc: 'Em breve' },
 ]
-
 const quantidades = [10, 20, 30, 50, 100, 200]
 
 export default function NovaRecolhaPage() {
@@ -22,13 +22,39 @@ export default function NovaRecolhaPage() {
   const [selected, setSelected] = useState<string[]>(['plastico'])
   const [quantidade, setQuantidade] = useState(30)
   const [submitted, setSubmitted] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [erro, setErro] = useState('')
 
   function toggleMaterial(id: string) {
     setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
   }
 
-  function handleSubmit() {
-    setSubmitted(true)
+  async function handleSubmit() {
+    setLoading(true); setErro('')
+    const sb = createClient()
+    const { data: { user } } = await sb.auth.getUser()
+    if (!user) { setErro('Sessão expirada.'); setLoading(false); return }
+
+    const { data: link } = await sb.from('conta_utilizadores')
+      .select('conta_id').eq('user_id', user.id).limit(1).maybeSingle()
+    if (!link) { setErro('Conta não encontrada.'); setLoading(false); return }
+
+    const labels: Record<string,string> = { plastico: 'Plástico', lata: 'Latas', vidro: 'Vidro' }
+    const materiaisStr = selected.map(s => labels[s]).join(', ')
+    const valor = Number((quantidade * 0.10).toFixed(2))
+    const co2 = Number((quantidade * 0.0142).toFixed(2))
+
+    const { error } = await sb.from('pedidos_recolha').insert({
+      conta_id: link.conta_id,
+      materiais: materiaisStr,
+      quantidade,
+      valor_deposito: valor,
+      co2_kg: co2,
+      estado: 'agendada',
+    })
+
+    if (error) { setErro('Não foi possível registar o pedido.'); setLoading(false); return }
+    setSubmitted(true); setLoading(false)
   }
 
   if (submitted) return (
@@ -37,9 +63,12 @@ export default function NovaRecolhaPage() {
         <Check className="w-10 h-10 text-[#1FA971]" />
       </div>
       <h2 className="font-display font-semibold text-2xl mb-2">Pedido registado!</h2>
-      <p className="text-[#6B7A72] text-sm mb-2">A sua recolha foi adicionada à fila de espera.</p>
-      <p className="text-[#6B7A72] text-sm mb-8">Contactamo-lo quando for atribuída a uma rota no seu bairro.</p>
-      <Link href="/dashboard"><Button size="full">Voltar ao início</Button></Link>
+      <p className="text-[#6B7A72] text-sm mb-2">A sua recolha foi adicionada e está agendada.</p>
+      <p className="text-[#6B7A72] text-sm mb-8">Encaixamo-la na próxima rota do seu bairro.</p>
+      <div className="w-full max-w-sm space-y-2">
+        <Link href="/recolhas"><Button size="full">Ver as minhas recolhas</Button></Link>
+        <Link href="/dashboard"><Button size="full" variant="ghost">Voltar ao início</Button></Link>
+      </div>
     </div>
   )
 
@@ -52,7 +81,6 @@ export default function NovaRecolhaPage() {
         <h1 className="font-display font-semibold text-xl">Nova recolha</h1>
         <Badge variant="grey" className="ml-auto">Passo {step}/3</Badge>
       </div>
-
       <div className="px-4 space-y-4">
         {step === 1 && (
           <>
@@ -76,7 +104,6 @@ export default function NovaRecolhaPage() {
             <Button size="full" onClick={() => setStep(2)} disabled={selected.length === 0}>Continuar</Button>
           </>
         )}
-
         {step === 2 && (
           <>
             <p className="text-sm text-[#6B7A72]">Quantas embalagens tem aproximadamente?</p>
@@ -85,9 +112,7 @@ export default function NovaRecolhaPage() {
                 <button key={q} onClick={() => setQuantidade(q)}
                   className={cn('p-4 rounded-2xl border-2 font-display font-bold text-lg transition-all',
                     quantidade === q ? 'border-[#1FA971] bg-[#EAF7F1] text-[#0c5e44]' : 'border-[#E4E7E2] bg-white'
-                  )}>
-                  {q}
-                </button>
+                  )}>{q}</button>
               ))}
             </div>
             <Card className="bg-[#FBF1DD] border-[#ECD9AE]">
@@ -102,7 +127,6 @@ export default function NovaRecolhaPage() {
             </div>
           </>
         )}
-
         {step === 3 && (
           <>
             <p className="text-sm text-[#6B7A72]">Confirmação do pedido</p>
@@ -119,12 +143,12 @@ export default function NovaRecolhaPage() {
                 </div>
               </div>
             </Card>
-            <Card className="bg-[#EAF7F1] border-[#BFE6D4]">
-              <p className="text-xs text-[#0c5e44]">A recolha é gratuita — a sua casa entra na rota de um condomínio ou restaurante próximo, sem custo extra.</p>
-            </Card>
+            {erro && <p className="text-sm text-[#C2563B]">{erro}</p>}
             <div className="flex gap-3">
-              <Button variant="ghost" onClick={() => setStep(2)} className="flex-1">Voltar</Button>
-              <Button variant="brass" onClick={handleSubmit} className="flex-1">Confirmar pedido</Button>
+              <Button variant="ghost" onClick={() => setStep(2)} className="flex-1" disabled={loading}>Voltar</Button>
+              <Button variant="brass" onClick={handleSubmit} className="flex-1" disabled={loading}>
+                {loading ? 'A registar…' : 'Confirmar pedido'}
+              </Button>
             </div>
           </>
         )}
